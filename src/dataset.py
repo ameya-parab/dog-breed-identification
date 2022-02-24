@@ -9,8 +9,8 @@ from torchvision import transforms
 
 DATA_DIR = os.path.join("..", "data")
 BREED = sorted(pd.read_csv(os.path.join(DATA_DIR, "labels.csv")).breed.unique())
-IMAGE_DIM = 100
-
+IMAGE_DIM = 128
+CROPPED_DIM = 100
 
 class Dogs(Dataset):
     def __init__(self, split: str):
@@ -36,6 +36,7 @@ class Dogs(Dataset):
         transform_pipeline = transforms.Compose(
             [
                 transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
+                transforms.CenterCrop(CROPPED_DIM),
                 transforms.ToTensor(),
                 transforms.ConvertImageDtype(torch.float32),
                 transforms.Normalize(
