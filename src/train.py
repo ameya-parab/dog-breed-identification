@@ -1,4 +1,5 @@
 import os
+import sys
 import typing
 
 import torch
@@ -8,8 +9,9 @@ import torch.nn.functional as F
 from .model import EfficientNet
 from .utils import set_random_seed
 
-MODEL_PATH = os.path.join("..", "model", "cnn.pth")
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+sys.path.insert(0, os.path.join(os.getcwd(), ".."))
+
+from config import DEVICE, MODEL_PATH
 
 
 def run_training(

@@ -1,4 +1,5 @@
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -9,12 +10,11 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from .utils import set_random_seed
+sys.path.insert(0, os.path.join(os.getcwd(), ".."))
 
-DATA_DIR = os.path.join("..", "data")
-BREED = sorted(pd.read_csv(os.path.join(DATA_DIR, "labels.csv")).breed.unique())
-IMAGE_DIM = 128
-CROPPED_DIM = 100
+from config import BREED, CROPPED_DIM, DATA_DIR, IMAGE_DIM
+
+from src.utils import set_random_seed
 
 
 class Dogs(Dataset):

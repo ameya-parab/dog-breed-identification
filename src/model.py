@@ -1,11 +1,16 @@
 import os
+import sys
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
 
-os.environ["TORCH_HOME"] = os.path.join("..", "model")
+sys.path.insert(0, os.path.join(os.getcwd(), ".."))
+
+from config import MODEL_DIR
+
+os.environ["TORCH_HOME"] = MODEL_DIR
 
 
 class NeuralNetwork(nn.Module):
