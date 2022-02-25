@@ -8,6 +8,9 @@ DATA_DIR = os.path.join(ROOT_DIR, "data")
 MODEL_DIR = os.path.join(ROOT_DIR, "model")
 MODEL_PATH = os.path.join(MODEL_DIR, "model.pth")
 
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(MODEL_DIR, exist_ok=True)
+
 STORAGE = f"sqlite:///{os.path.join(ROOT_DIR, 'study', 'hyperparameter_studies.db')}"
 
 BREED = sorted(pd.read_csv(os.path.join(DATA_DIR, "labels.csv")).breed.unique())
