@@ -1,6 +1,11 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import models
+
+os.environ["TORCH_HOME"] = os.path.join("..", "model")
 
 
 class NeuralNetwork(nn.Module):
@@ -48,3 +53,17 @@ class NeuralNetwork(nn.Module):
         data = self.fc3(data)
 
         return data
+
+
+class EfficientNet:
+    def __init__(self, freeze: bool = True):
+
+        self.model = models.efficientnet_b6(pretrained=True)
+
+        if freeze:
+            for parameter in self.model.parameters():
+                parameter.requires_grad = False
+
+        self.model.classifier[1] = nn.Linear(
+            in_features=self.model.classifier[1].in_features, out_features=120
+        )
