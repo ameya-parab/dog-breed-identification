@@ -60,15 +60,15 @@ class NeuralNetwork(nn.Module):
         return data
 
 
-class EfficientNet:
+class ResNet:
     def __init__(self, freeze: bool = True):
 
-        self.model = models.efficientnet_b6(pretrained=True)
+        self.model = models.resnet50(pretrained=True)
 
         if freeze:
             for parameter in self.model.parameters():
                 parameter.requires_grad = False
 
-        self.model.classifier[1] = nn.Linear(
-            in_features=self.model.classifier[1].in_features, out_features=120
+        self.model.fc = nn.Linear(
+            in_features=self.model.fc.in_features, out_features=120
         )
