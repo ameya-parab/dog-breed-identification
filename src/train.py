@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .model import EfficientNet
+from .model import ResNet
 from .utils import set_random_seed
 
 sys.path.insert(0, os.path.join(os.getcwd(), ".."))
@@ -19,86 +19,99 @@ def run_training(
     valid_dataloader,
     epochs,
     lr,
-    random_seed,
-    lr_step,
-    lr_gamma,
+    random_seed=None,
     verbose=False,
+    freeze_layers=True,
 ) -> float:
 
-    set_random_seed(random_seed=random_seed)
+    if random_seed is not None:
+        set_random_seed(random_seed=random_seed)
 
-    model = EfficientNet().model.to(DEVICE)
+    model = ResNet(freeze=freeze_layers).model.to(DEVICE)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
-    linear_step_scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer=optimizer, step_size=lr_step, gamma=lr_gamma
-    )
+    if freeze_layers:
+        model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+    else:
+        model_parameters = model.parameters()
+
+    optimizer = torch.optim.SGD(model_parameters, lr=lr)
 
     for epoch in range(epochs):
 
-        model.train()
+        running_train_loss = 0.0
+        running_train_images_count = 0
 
+        model.train()
         for step, (images, labels) in enumerate(train_dataloader):
 
             images = images.to(DEVICE)
             labels = labels.to(DEVICE)
 
+            optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
+            running_train_loss += loss.item()
 
-            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            linear_step_scheduler.step()
 
-            if (step % 128 == 0) and verbose:
+            running_train_images_count += labels.size(0)
+
+            if (step % 100 == 0) and verbose:
 
                 print(
-                    f"Epoch [{epoch+1}/{epochs}], Step [{step+1}/{len(train_dataloader)}], Loss: {loss.item():.4f}"
+                    f"Epoch [{epoch+1}/{epochs}], Step [{step+1}/{len(train_dataloader)}], Running Train Loss: {round((running_train_loss/running_train_images_count), 4)}"
                 )
+
+        epoch_train_loss = running_train_loss / len(train_dataloader)
 
         # Save Model
         torch.save(model.state_dict(), MODEL_PATH)
 
         # Evaluate Model
-        accuracy, _ = evaluate(model=model, dataloader=valid_dataloader)
+        print("Running model evaluation...")
+        validation_accuracy, _, validation_loss = evaluate(
+            model=model, dataloader=valid_dataloader
+        )
 
-        if (epoch == 0) or (((epoch + 1) % 1) == 0) or (epoch + 1 == epochs):
+        epoch_validation_loss = validation_loss / len(valid_dataloader)
 
-            print(
-                f"Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}, Accuracy: {accuracy:.2f}"
-            )
+        print(
+            f"Epoch [{epoch+1}/{epochs}], Train Loss: {round(epoch_train_loss,4)}, Valid Loss: {round(epoch_validation_loss, 4)}, Valid Acc: {validation_accuracy} %"
+        )
 
-    return accuracy
+    return (validation_accuracy, validation_loss)
 
 
 def evaluate(model, dataloader) -> typing.Union[float, torch.Tensor]:
 
+    criterion = nn.CrossEntropyLoss()
+
     model.eval()
     with torch.no_grad():
 
-        batch_predictions, batch_ground_labels, batch_probabilities = [], [], []
+        total_loss, batch_accuracy, total_images = 0.0, 0.0, 0
+        batch_ground_labels, batch_probabilities = [], []
         for _, (batch_images, batch_labels) in enumerate(dataloader):
 
             batch_images = batch_images.to(DEVICE)
             batch_labels = batch_labels.to(DEVICE)
 
             outputs = model(batch_images)
+            loss = criterion(outputs, batch_labels)
+            total_loss += loss.item()
             probabilities = F.softmax(outputs, dim=1)
             predicted = torch.argmax(outputs, dim=1)
 
             batch_probabilities.append(probabilities)
-            batch_predictions.append(predicted)
             batch_ground_labels.append(batch_labels)
+            total_images += batch_labels.size(0)
 
-        predictions = torch.cat(batch_predictions, dim=0)
-        labels = torch.cat(batch_ground_labels, dim=0)
-
-        correct_predictions = torch.eq(predictions, labels).sum().item()
-        total_images = predictions.shape[0]
+            batch_accuracy += (predicted == batch_labels).sum().item()
 
         return (
-            (correct_predictions / total_images) * 100,
+            (100 * batch_accuracy / total_images),
             batch_probabilities,
+            total_loss,
         )
