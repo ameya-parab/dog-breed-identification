@@ -98,7 +98,7 @@ def fetch_dataset(random_seed: int, batch_size: int, num_workers: int = 4):
         num_workers=num_workers,
         worker_init_fn=seed_worker,
         generator=generator,
-        shuffle=True
+        shuffle=True,
     )
     valid_dataloader = torch.utils.data.DataLoader(
         validation_dataset,
@@ -106,10 +106,13 @@ def fetch_dataset(random_seed: int, batch_size: int, num_workers: int = 4):
         num_workers=num_workers,
         worker_init_fn=seed_worker,
         generator=generator,
-        shuffle=False
+        shuffle=False,
     )
 
-    test = pd.DataFrame(os.listdir(os.path.join(DATA_DIR, "test")), columns=["id"])
+    test = pd.DataFrame(
+        [image.split(".")[0] for image in os.listdir(os.path.join(DATA_DIR, "test"))],
+        columns=["id"],
+    )
 
     test_dataset = Dogs(split="test", dataset=test)
 
@@ -119,7 +122,7 @@ def fetch_dataset(random_seed: int, batch_size: int, num_workers: int = 4):
         num_workers=num_workers,
         worker_init_fn=seed_worker,
         generator=generator,
-        shuffle=False
+        shuffle=False,
     )
 
     return (train_dataloader, valid_dataloader, test_dataloader)
