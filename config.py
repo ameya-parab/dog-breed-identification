@@ -15,6 +15,6 @@ STORAGE = f"sqlite:///{os.path.join(ROOT_DIR, 'study', 'hyperparameter_studies.d
 
 BREED = sorted(pd.read_csv(os.path.join(DATA_DIR, "labels.csv")).breed.unique())
 IMAGE_DIM = 256
-CROPPED_DIM = 224
+CROPPED_DIM = 240
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"

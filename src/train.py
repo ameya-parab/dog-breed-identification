@@ -2,11 +2,12 @@ import os
 import sys
 import typing
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .model import ResNet
+from .model import EfficientNet
 from .utils import set_random_seed
 
 sys.path.insert(0, os.path.join(os.getcwd(), ".."))
@@ -27,7 +28,7 @@ def run_training(
     if random_seed is not None:
         set_random_seed(random_seed=random_seed)
 
-    model = ResNet(freeze=freeze_layers).model.to(DEVICE)
+    model = EfficientNet(freeze=freeze_layers).model.to(DEVICE)
 
     criterion = nn.CrossEntropyLoss()
     if freeze_layers:
@@ -37,6 +38,7 @@ def run_training(
 
     optimizer = torch.optim.SGD(model_parameters, lr=lr)
 
+    min_epoch_validation_loss = np.inf
     for epoch in range(epochs):
 
         running_train_loss = 0.0
@@ -61,13 +63,12 @@ def run_training(
             if (step % 100 == 0) and verbose:
 
                 print(
-                    f"Epoch [{epoch+1}/{epochs}], Step [{step+1}/{len(train_dataloader)}], Running Train Loss: {round((running_train_loss/running_train_images_count), 4)}"
+                    f"Epoch [{epoch+1}/{epochs}], "
+                    f"Step [{step+1}/{len(train_dataloader)}], Running Train Loss: "
+                    f"{round((running_train_loss/running_train_images_count), 4)}"
                 )
 
         epoch_train_loss = running_train_loss / len(train_dataloader)
-
-        # Save Model
-        torch.save(model.state_dict(), MODEL_PATH)
 
         # Evaluate Model
         print("Running model evaluation...")
@@ -78,10 +79,22 @@ def run_training(
         epoch_validation_loss = validation_loss / len(valid_dataloader)
 
         print(
-            f"Epoch [{epoch+1}/{epochs}], Train Loss: {round(epoch_train_loss,4)}, Valid Loss: {round(epoch_validation_loss, 4)}, Valid Acc: {validation_accuracy} %"
+            f"Epoch [{epoch+1}/{epochs}], Train Loss: {round(epoch_train_loss,4)}, "
+            f"Valid Loss: {round(epoch_validation_loss, 4)}, "
+            f"Valid Acc: {validation_accuracy} %"
         )
 
-    return (validation_accuracy, validation_loss)
+        if epoch_validation_loss < min_epoch_validation_loss:
+
+            # Save Model
+            print(
+                f"Valdiation loss decreased from {min_epoch_validation_loss} to "
+                f"{epoch_validation_loss}, saving the model..."
+            )
+            torch.save(model.state_dict(), MODEL_PATH)
+            min_epoch_validation_loss = epoch_validation_loss
+
+    return (validation_accuracy, epoch_validation_loss)
 
 
 def evaluate(model, dataloader) -> typing.Union[float, torch.Tensor]:
